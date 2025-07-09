@@ -1,62 +1,98 @@
-/* Autthor PRIYANSHU MORBAITA
-   DATE :- 02-06-2025   
-*/
+/* Autthor PRIYANSHU MORBAITA */
+
+#ifndef ALLOC_H
+#define ALLOC_H
 
 #define _GNU_SOURCE
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdbool.h>
-#include <assert.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <pthread.h>
+#include <stdatomic.h>
+#include <sys/mman.h>
+#include <unistd.h>
 #include <errno.h>
 
-#define public __attribute__((visibility("default")))
-#define private static
-#define packed __attribute__((__packed__))
-#define unused __attribute__((__unused__))
-#define MAX_WORDS ((1024*1024*1024/4)-1)
-#define ZERO_WORDS 1073741823
-
-#define BLOCKSIZE 4
-#define ErrNoErr    0
-#define ERR_NO_MEM    1
-#define ERR_UNKNOWN  2
-#define ERR_DOUBLE_FREE   4
-
-#define bool _Bool
 #define true 1
 #define false 0
 
+// Configuration constants
+#define ALIGNMENT 16
+#define SLAB_SIZE (64 * 1024) // 64KB slabs
+#define MAX_SIZE_CLASSES 23
+#define CACHE_SIZE 32
+#define LARGE_BLOCK_THRESHOLD 65536
+#define META_SLAB_SIZE (64 * 1024) // 64KB for metadata allocation
 
-typedef unsigned char int8;
-typedef unsigned short int int16;
-typedef unsigned int int32;
-typedef unsigned long long int int64;
-typedef void heap;
-typedef int32 word;
+// Magic numbers
+#define BLOCK_MAGIC 0xDEADBEEF
+#define LARGE_MAGIC 0xFEEDFACE
 
-struct packed s_header {
-    word w:30;
-    bool alloced:1;
-    bool unused reserved:1;
-};
-typedef struct packed s_header header;
 
-#define RET_ERROR(x) do { \
-    errno = (x); \
-    return NULL; \
-} while(false)
+typedef struct meta_block {
+    size_t size;
+    int free;
+    struct meta_block *next;
+} meta_block;
 
-#define findblock(x) findblock_($h memspace,(x),0)
-#define show() show_($h memspace)
-#define allock(x) alloc((x)*1024)
-#define allocm(x) alloc((x)*(1024*1024))
-#define allocg(x) allocm((x)*1024)
+// Block header structure
+typedef struct block_header {
+    int size_class;
+    bool freed;
+    uint32_t magic;
+    struct block_header *next;
+} block_header;
 
-public bool destroy(void*);
-private void show_(header*);
-private header *findblock_(header*,word,word);
-private void *mkalloc(word,header*);
-public void *alloc(int32);
-int main(int,char**);
+// Slab node structure
+typedef struct slab_node {
+    void *slab;
+    size_t size;
+    struct slab_node *next;
+} slab_node;
+
+// Large block structure
+typedef struct large_block {
+    size_t size;
+    int free;
+    bool freed;
+    struct large_block *next;
+    uint32_t magic;
+} large_block;
+
+// Per-size-class cache for thread-local storage
+typedef struct cache_entry {
+    block_header *cache_list[CACHE_SIZE];
+    int cache_count;
+} cache_entry;
+
+// Thread cache structure
+typedef struct tcache_t {
+    cache_entry cache[MAX_SIZE_CLASSES];
+} tcache_t;
+
+// Global free list for each size class
+typedef struct Globally {
+    pthread_mutex_t lock;
+    slab_node *slabs;
+    block_header *free_list;
+} Globally;
+
+// Global heap structure
+typedef struct heap {
+    Globally *global_free_list[MAX_SIZE_CLASSES];
+    large_block *large_free_list;
+    slab_node *large_slabs;
+} heap;
+
+// Function declarations
+void *my_alloc(size_t size);
+void my_free(void *ptr);
+void init(void);
+void allocator_cleanup(void);
+void thread_cache_cleanup(void);
+void print_allocator_status(void);
+
+#endif // ALLOC_H
