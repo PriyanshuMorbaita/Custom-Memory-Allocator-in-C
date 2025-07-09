@@ -1,5 +1,3 @@
-/* PRIYANSHU MORBAITA */
-
 CC = gcc
 CFLAGS = -std=c11 -pthread -O2
 OBJS = alloc.o test.o
