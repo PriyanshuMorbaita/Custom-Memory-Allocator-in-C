@@ -1,18 +1,23 @@
-flags=-O2 -Wall -std=c23
-ldflags=
+/* PRIYANSHU MORBAITA */
 
-.PHONY: clean
+CC = gcc
+CFLAGS = -std=c11 -pthread -O2
+OBJS = alloc.o test.o
+TARGET = test
 
-all: clean alloc
+all: $(TARGET)
 
-alloc: alloc.o heap.o
-	cc $(flags) -no-pie $^ -o $@ $(ldflags)
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^
 
 alloc.o: alloc.c alloc.h
-	cc $(flags) -c $<
+	$(CC) $(CFLAGS) -c alloc.c
 
-heap.o: heap.asm
-	nasm -f elf64 $^
+test.o: test.c alloc.h
+	$(CC) $(CFLAGS) -c test.c
+
+run: $(TARGET)
+	./$(TARGET)
 
 clean:
-	rm -f *.o alloc
+	rm -f $(OBJS) $(TARGET)
