@@ -1,6 +1,4 @@
-/* Autthor PRIYANSHU MORBAITA
-   DATE :- 02-06-2025   
-*/
+/* Autthor PRIYANSHU MORBAITA */
 
 #include "alloc.h"
 
